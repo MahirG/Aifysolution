@@ -22,13 +22,8 @@ export async function createClient() {
   });
 }
 
-let adminClient: ReturnType<typeof createAdminClient> | undefined;
-
 export function createAdminSupabaseClient() {
-  if (!adminClient) {
-    adminClient = createAdminClient(env.supabaseUrl(), env.supabaseServiceRoleKey(), {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
-  }
-  return adminClient;
+  return createAdminClient(env.supabaseUrl(), env.supabaseServiceRoleKey(), {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
 }
