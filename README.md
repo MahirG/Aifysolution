@@ -15,6 +15,14 @@ Turn one original source—an article, transcript, founder memo, case study, voi
 
 The system explicitly instructs the model not to invent evidence, statistics, client stories, quotations, or factual claims.
 
+## Digital-product master prompt
+
+The reusable, production-focused build prompt for developing and validating this product is available at:
+
+[`docs/DIGITAL_PRODUCT_MASTER_PROMPT.md`](docs/DIGITAL_PRODUCT_MASTER_PROMPT.md)
+
+It covers product strategy, UX, architecture, security, AI safeguards, monetization, quality assurance, deployment, and launch readiness.
+
 ## Included in this foundation
 
 - Next.js App Router + TypeScript
