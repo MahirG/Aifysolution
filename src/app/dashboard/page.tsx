@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
+import { getUsageSnapshot } from "@/lib/usage";
 
 export const metadata = { title: "Workspace" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const supabase = await createClient();
+  const usage = await getUsageSnapshot(user.id);
 
   const { data: projects } = await supabase
     .from("source_assets")
@@ -14,6 +16,9 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(12);
+
+  const sourcePercent = Math.min(100, Math.round((usage.sourceProjectsUsed / usage.sourceProjectsLimit) * 100));
+  const assetPercent = Math.min(100, Math.round((usage.generatedAssetsUsed / usage.generatedAssetsLimit) * 100));
 
   return (
     <main className="container" style={{ padding: "42px 0 84px" }}>
@@ -26,23 +31,39 @@ export default async function DashboardPage() {
         <Link href="/dashboard/new" className="button button-blue">Add source material</Link>
       </div>
 
+      <section className="card" style={{ padding: 24, marginTop: 30 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+          <div>
+            <span className="eyebrow">{usage.planLabel} plan</span>
+            <h2 style={{ fontSize: 26, margin: "14px 0 6px" }}>Monthly capacity</h2>
+            <p className="muted" style={{ margin: 0 }}>Usage resets at the beginning of each calendar month.</p>
+          </div>
+          <Link href="/pricing" className="button button-secondary">View plans</Link>
+        </div>
+        <div className="responsive-two-col" style={{ marginTop: 24 }}>
+          <div>
+            <p><strong>Source projects</strong> <span className="muted">{usage.sourceProjectsUsed} / {usage.sourceProjectsLimit}</span></p>
+            <div style={{ height: 10, borderRadius: 999, background: "#e9edf4", overflow: "hidden" }}><div style={{ width: `${sourcePercent}%`, height: "100%", background: "#3d5afe" }} /></div>
+          </div>
+          <div>
+            <p><strong>Generated assets</strong> <span className="muted">{usage.generatedAssetsUsed} / {usage.generatedAssetsLimit}</span></p>
+            <div style={{ height: 10, borderRadius: 999, background: "#e9edf4", overflow: "hidden" }}><div style={{ width: `${assetPercent}%`, height: "100%", background: "#07111f" }} /></div>
+          </div>
+        </div>
+      </section>
+
       {!projects?.length ? (
         <section className="card grid-lines" style={{ padding: "clamp(34px, 8vw, 80px)", textAlign: "center", marginTop: 34 }}>
           <div style={{ width: 64, height: 64, borderRadius: 22, margin: "0 auto 20px", background: "#07111f", color: "white", display: "grid", placeItems: "center", fontSize: 28 }}>✦</div>
           <h2 style={{ fontSize: 30, margin: "0 0 10px" }}>Create your first authority pack</h2>
-          <p className="muted" style={{ maxWidth: 600, margin: "0 auto 24px", lineHeight: 1.6 }}>
-            Paste a founder memo, article, transcript, case study, or client lesson. Qabeza will extract the thesis and create a source-grounded content pack.
-          </p>
+          <p className="muted" style={{ maxWidth: 600, margin: "0 auto 24px", lineHeight: 1.6 }}>Paste a founder memo, article, transcript, case study, or client lesson. Qabeza will extract the thesis and create a source-grounded content pack.</p>
           <Link href="/dashboard/new" className="button button-blue">Start with one source</Link>
         </section>
       ) : (
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 34 }}>
           {projects.map((project) => (
             <article key={project.id} className="card" style={{ padding: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <span className="eyebrow">{project.source_type}</span>
-                <span className="muted" style={{ fontSize: 13 }}>{new Date(project.created_at).toLocaleDateString()}</span>
-              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span className="eyebrow">{project.source_type}</span><span className="muted" style={{ fontSize: 13 }}>{new Date(project.created_at).toLocaleDateString()}</span></div>
               <h2 style={{ fontSize: 24, margin: "18px 0 10px" }}>{project.title}</h2>
               <p className="muted">{project.content_packs?.length ? "Authority pack generated" : "Source saved"}</p>
             </article>
