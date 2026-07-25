@@ -6,7 +6,7 @@ const plans = [
     name: "Starter",
     price: "$29",
     description: "For one consultant building a consistent point of view.",
-    features: ["4 source projects / month", "Up to 40 generated assets", "LinkedIn + newsletter outputs", "Claim ledger", "Export and copy"],
+    features: ["4 source projects / month", "Up to 44 generated assets", "LinkedIn + newsletter outputs", "Claim ledger", "Export and copy"],
     key: "starter"
   },
   {
@@ -21,7 +21,7 @@ const plans = [
     name: "Agency",
     price: "$199",
     description: "For teams producing authority content for several brands.",
-    features: ["60 source projects / month", "Multiple brand workspaces", "Approval workflow", "Team seats", "Priority support"],
+    features: ["60 source projects / month", "Up to 660 generated assets", "Multiple brand workspaces", "Approval workflow", "Priority support"],
     key: "agency"
   }
 ];
@@ -42,15 +42,7 @@ export default function PricingPage() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 18, marginTop: 44 }}>
           {plans.map((plan) => (
-            <article
-              key={plan.key}
-              className="card"
-              style={{
-                padding: 28,
-                borderColor: plan.featured ? "#3d5afe" : undefined,
-                boxShadow: plan.featured ? "0 24px 70px rgba(61,90,254,.14)" : undefined
-              }}
-            >
+            <article key={plan.key} className="card" style={{ padding: 28, borderColor: plan.featured ? "#3d5afe" : undefined, boxShadow: plan.featured ? "0 24px 70px rgba(61,90,254,.14)" : undefined }}>
               {plan.featured && <span className="eyebrow">Most popular</span>}
               <h2 style={{ fontSize: 30, margin: "18px 0 6px" }}>{plan.name}</h2>
               <div style={{ display: "flex", alignItems: "end", gap: 8 }}>

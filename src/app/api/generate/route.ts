@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { contentPackSchema, sourceInputSchema } from "@/lib/ai/schema";
 import { buildAuthorityPrompt } from "@/lib/ai/prompt";
 import { createClient } from "@/lib/supabase/server";
+import { releaseGeneration, reserveGeneration } from "@/lib/usage";
 import { env } from "@/lib/env";
 
 export const maxDuration = 60;
@@ -20,26 +21,49 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid source input.", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { data: source, error: sourceError } = await supabase
-    .from("source_assets")
-    .insert({
-      user_id: authData.user.id,
-      title: parsed.data.title,
-      source_type: parsed.data.sourceType,
-      audience: parsed.data.audience,
-      goal: parsed.data.goal,
-      call_to_action: parsed.data.callToAction,
-      source_text: parsed.data.sourceText,
-      status: "processing"
-    })
-    .select("id")
-    .single();
-
-  if (sourceError || !source) {
-    return NextResponse.json({ error: "Unable to save source material." }, { status: 500 });
+  let reservation;
+  try {
+    reservation = await reserveGeneration(authData.user.id);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to verify monthly usage." },
+      { status: 503 }
+    );
   }
 
+  if (!reservation.allowed) {
+    return NextResponse.json(
+      {
+        error: `You have reached the ${reservation.usage.planLabel} plan's monthly generation limit. Upgrade your plan to continue.`,
+        code: "PLAN_LIMIT_REACHED",
+        usage: reservation.usage,
+        upgradeUrl: "/pricing"
+      },
+      { status: 429 }
+    );
+  }
+
+  let sourceId: string | null = null;
+
   try {
+    const { data: source, error: sourceError } = await supabase
+      .from("source_assets")
+      .insert({
+        user_id: authData.user.id,
+        title: parsed.data.title,
+        source_type: parsed.data.sourceType,
+        audience: parsed.data.audience,
+        goal: parsed.data.goal,
+        call_to_action: parsed.data.callToAction,
+        source_text: parsed.data.sourceText,
+        status: "processing"
+      })
+      .select("id")
+      .single();
+
+    if (sourceError || !source) throw sourceError ?? new Error("Unable to save source material.");
+    sourceId = source.id;
+
     const result = await generateText({
       model: env.aiModel(),
       output: Output.object({ schema: contentPackSchema }),
@@ -82,9 +106,16 @@ export async function POST(request: Request) {
 
     await supabase.from("source_assets").update({ status: "completed" }).eq("id", source.id);
 
-    return NextResponse.json({ sourceId: source.id, contentPackId: savedPack.id, pack });
+    return NextResponse.json({
+      sourceId: source.id,
+      contentPackId: savedPack.id,
+      pack,
+      usage: reservation.usage
+    });
   } catch (error) {
-    await supabase.from("source_assets").update({ status: "failed" }).eq("id", source.id);
+    if (sourceId) await supabase.from("source_assets").update({ status: "failed" }).eq("id", sourceId);
+    await releaseGeneration(authData.user.id, reservation.usage.periodStart);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Generation failed." },
       { status: 500 }

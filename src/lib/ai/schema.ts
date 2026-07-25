@@ -17,6 +17,34 @@ const outputType = z.enum([
   "lead_magnet_outline"
 ]);
 
+const outputSchema = z.object({
+  type: outputType,
+  title: z.string(),
+  content: z.string(),
+  rationale: z.string(),
+  callToAction: z.string()
+});
+
+const requiredOutputCounts = {
+  linkedin_post: 5,
+  newsletter: 1,
+  carousel_brief: 1,
+  short_video_script: 3,
+  lead_magnet_outline: 1
+} as const;
+
+const outputsSchema = z.array(outputSchema).length(11).superRefine((outputs, context) => {
+  for (const [type, expected] of Object.entries(requiredOutputCounts)) {
+    const actual = outputs.filter((output) => output.type === type).length;
+    if (actual !== expected) {
+      context.addIssue({
+        code: "custom",
+        message: `Expected ${expected} ${type} outputs, received ${actual}.`
+      });
+    }
+  }
+});
+
 export const contentPackSchema = z.object({
   sourceSummary: z.string(),
   coreThesis: z.string(),
@@ -28,15 +56,7 @@ export const contentPackSchema = z.object({
       confidence: z.enum(["direct", "inferred"])
     })
   ).min(3).max(12),
-  outputs: z.array(
-    z.object({
-      type: outputType,
-      title: z.string(),
-      content: z.string(),
-      rationale: z.string(),
-      callToAction: z.string()
-    })
-  ).min(6).max(14)
+  outputs: outputsSchema
 });
 
 export type SourceInput = z.infer<typeof sourceInputSchema>;
